@@ -1,0 +1,30 @@
+{
+  "name": "EventCalender",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node node_modules/react-native/local-cli/cli.js start",
+    "test": "jest"
+  },
+  "dependencies": {
+    "ex-react-native-i18n": "0.0.6",
+    "lodash": "^4.17.15",
+    "moment-timezone": "^0.5.27",
+    "native-base": "^2.13.8",
+    "react": "16.8.3",
+    "react-native": "0.59.9",
+    "react-native-calendars": "^1.214.0",
+    "react-native-i18n": "^2.0.15"
+  },
+  "devDependencies": {
+    "@babel/core": "7.7.2",
+    "@babel/runtime": "7.7.2",
+    "babel-jest": "24.9.0",
+    "jest": "24.9.0",
+    "metro-react-native-babel-preset": "0.57.0",
+    "react-test-renderer": "16.8.3"
+  },
+  "jest": {
+    "preset": "react-native"
+  }
+}
