@@ -17,22 +17,39 @@ import {
   FlatList,
   Dimensions,
   ActivityIndicator,
-  Platform
+  Platform,
+  NetInfo
 } from "react-native";
 import _ from "lodash";
 import I18n from "react-native-i18n";
-
-var moment = require("moment-timezone");
-
+// var moment = require("moment-timezone");
+import moment, { version } from "moment";
 import { Calendar } from "react-native-calendars";
+import axios from "axios";
+// import { API_URL, API_FAILURE_CAPTION, API_INTERNET_CONNECTION_CAPTION, API_USER_TYPE, API_USER_ID } from './../../Api';
 
-// requires('moment/min/locales.min');
+const API_URL = "https://api.bsk.edu.kw/api/";
+
 if (I18n.currentLocale() === "nl-NL") {
   moment.locale("nl");
 } else {
   moment.locale("en");
 }
-export default class eventCalenderNew2 extends React.Component {
+
+let currentdate = new Date().getDate();
+let currentmonth = new Date().getMonth() + 1; //Current Month.
+let currentyear = new Date().getFullYear(); //Current Year.
+let formatCurrentData = "";
+
+let timeMax = "2019-09-23T10:00:00-07:00";
+let timeMin = "2019-09-21T10:00:00-07:00";
+let timeZone = "GMT+5:30";
+let calenderObj = {};
+let markedDate, markeddateShow;
+
+const height = Dimensions.get("window").height;
+
+export default class EventCalendarNew extends React.Component {
   constructor(props) {
     super(props);
     let date = moment().format("MMMM");
@@ -46,39 +63,94 @@ export default class eventCalenderNew2 extends React.Component {
       selectedDay: moment(),
       month: (date = date[0].toUpperCase() + date.substr(1)),
       error: null,
-      refreshing: false
+      refreshing: false,
+      currentdate: "",
+      calendarId: "",
+      markedArray: {}
     };
     this.newDate = [];
     this.heights = [];
     this.onLayout = this.onLayout.bind(this);
   }
   componentDidMount() {
-    this.getEvents();
+    // this.getEvents();
+    NetInfo.isConnected.fetch().done(isConnected => {
+      if (isConnected == true) {
+        axios
+          .get(API_URL + "parent/calender-id")
+          .then(res => {
+            return res.data;
+          })
+          .then(data => {
+            this.setState({ calendarId: data.payload.calender_id });
+            this.getEvents();
+          });
+      }
+    });
   }
+
+  componentWillMount() {
+    // this.props.navigation.addListener("willFocus", payload => {
+    NetInfo.isConnected.fetch().done(isConnected => {
+      if (isConnected == true) {
+        axios
+          .get(API_URL + "parent/calender-id")
+          .then(res => {
+            return res.data;
+          })
+          .then(data => {
+            this.setState({ calendarId: data.payload.calender_id });
+            this.getEvents();
+          });
+      }
+    });
+    // });
+  }
+
   componentWillUnmount() {
     this.getEvents();
   }
-  getEvents = () => {
-    const CALENDAR_ID = "someCalendarID";
-    const API_KEY = "API-KEY";
-    const beginDate = moment();
 
+  getEvents() {
     let url =
-      "https://www.googleapis.com/calendar/v3/calendars/xongolab.com_747tspi56uevi2dcq6rur7hfoo@group.calendar.google.com/events?key=AIzaSyC-Q9jucdl_iZRCgzNOeqqQ6Pqyhyl3fsU";
-
+      "https://www.googleapis.com/calendar/v3/calendars/" +
+      this.state.calendarId +
+      "/events?key=AIzaSyC-Q9jucdl_iZRCgzNOeqqQ6Pqyhyl3fsU";
     this.setState({ loading: true });
     fetch(url)
       .then(response => response.json())
       .then(responseJson => {
-        console.warn("sada", responseJson.items);
-
         this.setState({
-          pageToken: responseJson.nextPageToken,
-          dataSource: [...this.state.dataSource, ...responseJson.items],
+          // pageToken: responseJson.nextPageToken,
+          dataSource: responseJson.items,
           loading: false,
           refreshing: false,
           error: responseJson.error || null
         });
+        let lenghtArray = responseJson.items.length;
+        for (let i = 0; i < lenghtArray; i++) {
+          if (responseJson.items[i].start.dateTime) {
+            markedDate = responseJson.items[i].start.dateTime;
+            let timeDisply = markedDate.split("T");
+            markeddateShow = timeDisply[0];
+          } else if (responseJson.items[i].start.date) {
+            markeddateShow = responseJson.items[i].start.date;
+          }
+          this.setState({ markedArray: markeddateShow });
+
+          let datevalue = this.state.markedArray;
+
+          const workout = {
+            key: "workout",
+            color: "#BD10E0",
+            selectedDotColor: "white"
+          };
+          calenderObj[datevalue] = {
+            selected: true,
+            dots: [workout],
+            selectedColor: "#e282f5"
+          };
+        }
       })
       .then(() => {
         this.getDates();
@@ -86,49 +158,49 @@ export default class eventCalenderNew2 extends React.Component {
       .catch(error => {
         this.setState({ error, loading: false, refreshing: false });
       });
-  };
-  handleLoadMore = () => {
-    this.setState(
-      {
-        pageToken: this.state.pageToken,
-        refreshing: true
-      },
-      () => {
-        this.getEvents();
-      }
-    );
-  };
+  }
+
+  // handleLoadMore = () => {
+  //   this.setState(
+  //     {
+  //       pageToken: this.state.pageToken,
+  //       refreshing: true
+  //     },
+  //     () => {
+  //       this.getEvents();
+  //     }
+  //   );
+  // };
   getDates() {
     let tempDate = "";
-    tempDate = _.map(this.state.dataSource, "start.dateTime");
+    tempDate = _.map(this.state.dataSource, "start.date");
     this.newDate.length = 0;
     for (let j in tempDate) {
       this.newDate.push(tempDate[j]);
     }
-    this.newDate = this.newDate.map(
-      (v, i, a) => (a[i - 1] || "").slice(0, 10) !== v.slice(0, 10) && v
-    );
   }
   renderDate(item) {
-    const date = item.start.dateTime;
-    const eventdate = moment(item.start.dateTime);
-    const today = moment() == eventdate ? styles.today : undefined;
-    const checkDate = moment(item.start.dateTime).format("YYYY-MM-DD");
-
-    if (this.newDate.includes(date)) {
-      return (
-        <View style={styles.day}>
-          <Text allowFontScaling={false} style={[styles.dayNum, today]}>
-            {moment(checkDate).format("DD")}
-          </Text>
-          <Text allowFontScaling={false} style={[styles.dayText, today]}>
-            {moment(checkDate).format("dd")}
-          </Text>
-        </View>
-      );
-    } else {
-      return <View style={styles.day} />;
+    let date = item.start.date || item.start.dateTime;
+    if (date.includes("T")) {
+      let timeDisply = date.split("T");
+      date = timeDisply[0];
     }
+
+    let checkDate = moment(date).format("YYYY-MM-DD");
+    // if (this.newDate.includes(date)) {
+    return (
+      <View style={styles.day}>
+        <Text allowFontScaling={false} style={[styles.dayNum, checkDate]}>
+          {moment(checkDate).format("DD")}
+        </Text>
+        <Text allowFontScaling={false} style={[styles.dayText, checkDate]}>
+          {moment(checkDate).format("ddd")}
+        </Text>
+      </View>
+    );
+    // } else {
+    //     return <View style={styles.day} />;
+    // }
   }
   renderRow({ item, index }) {
     return (
@@ -163,17 +235,17 @@ export default class eventCalenderNew2 extends React.Component {
     const month = moment(row.start.dateTime).format("MMMM");
     this.setState({ month: month[0].toUpperCase() + month.substr(1) });
   }
-  onLayout(event) {
-    console.warn("event", event);
 
+  onLayout(event) {
     this.viewHeight = event.nativeEvent.layout.height;
   }
+
   onRowLayoutChange(ind, event) {
     this.heights[ind] = event.nativeEvent.layout.height;
   }
+
   renderFooter = () => {
     if (!this.state.loading) return null;
-
     return (
       <View
         style={{
@@ -187,87 +259,78 @@ export default class eventCalenderNew2 extends React.Component {
     );
   };
 
-  // onDayPress(day, lastdate) {
-  //   this.setState({ items: [], isloading: true });
-  //   selectedDate = day.year + "-" + day.month + "-" + day.day;
-  //   date = day.dateString;
-  //   this.setState({ currentdate: day.dateString });
-  //   let PreviousDate = parseFloat(day.day) - 1;
-  //   timeMax = selectedDate + "T10:00:00-07:00";
-  //   timeMin =
-  //     day.year + "-" + day.month + "-" + PreviousDate + "T10:00:00-07:00";
+  onDayPress(day, lastdate) {
+    //this.setState({ isloading: true });
+    let selectedDate =
+      day.year +
+      "-" +
+      (day.month < 10 ? "0" + "" + day.month : day.month) +
+      "-" +
+      (day.day < 10 ? "0" + "" + day.day : day.day);
+    let date = day.dateString;
+    this.setState({ currentdate: day.dateString });
+    let PreviousDate = parseFloat(day.day) - 1;
+    timeMax = selectedDate + "T10:00:00-07:00";
+    timeMin =
+      day.year + "-" + day.month + "-" + PreviousDate + "T10:00:00-07:00";
+    let compareDate = "";
+    let newData = [];
+    console.warn("adas", this.state.dataSource);
 
-  //   NetInfo.isConnected.fetch().done(isConnected => {
-  //     if (isConnected == true) {
-  //       let url =
-  //         "https://www.googleapis.com/calendar/v3/calendars/" +
-  //         this.state.calendarId +
-  //         "/events?key=AIzaSyC-Q9jucdl_iZRCgzNOeqqQ6Pqyhyl3fsU&timeMax=" +
-  //         timeMax +
-  //         "&timeMin=" +
-  //         timeMin +
-  //         "&timeZone=" +
-  //         timeZone +
-  //         "";
-  //       // let url =
-  //       //   "https://www.googleapis.com/calendar/v3/calendars/" + this.state.calendarId + "/events?key=AIzaSyC-Q9jucdl_iZRCgzNOeqqQ6Pqyhyl3fsU&";
-  //       axios
-  //         .get(url)
-  //         .then(res => {
-  //           return res.data;
-  //         })
-  //         .then(data => {
-  //           let lenghtArray = data.items.length;
-  //           setTimeout(() => {
-  //             if (
-  //               this.state.items[date] != null &&
-  //               this.state.items[date].length > 0
-  //             ) {
-  //               let DateArrlength = this.state.items[date].length;
-  //               if (DateArrlength == 1) {
-  //                 this.setState({ isloading: false });
-  //                 for (let i = 0; i < lenghtArray; i++) {
-  //                   this.state.items[date].push({
-  //                     eventName: data.items[i].summary,
-  //                     isAdd: "true",
-  //                     index: this.index(i),
-  //                     startTime: data.items[i].start
-  //                   });
-  //                   if (i == lenghtArray - 1) {
-  //                     this.setState({ isloading: false });
-  //                   }
-  //                 }
-  //               }
-  //             }
-  //           }, 1000);
-  //         });
-  //     }
-  //   });
-  // }
+    for (var i = 0; i < this.state.dataSource.length; i++) {
+      compareDate =
+        this.state.dataSource[i].start.date ||
+        this.state.dataSource[i].start.dateTime;
+
+      if (selectedDate == compareDate) {
+        // console.warn('data matcheddddd');
+        this.scrollToIndex(i);
+      }
+    }
+  }
+
+  scrollToIndex(gotoIndex) {
+    this.flatListRef.scrollToIndex({ animated: true, index: gotoIndex });
+  }
+
+  getItemLayout = (data, index) => ({
+    length: 50,
+    offset: (height - 490) * index,
+    index
+  });
 
   render() {
     const { navigation } = this.props;
+    const { dataSource, loading } = this.state;
     return (
       <Container>
         <View style={{ height: 350 }}>
           <Calendar
-            // onDayPress={day => {
-            //   console.warn("selected day", day);
-            // }}
-
             onDayPress={day => this.onDayPress(day, this.state.currentdate)}
             monthFormat={"yyyy MM"}
-            onMonthChange={month => {
-              console.warn("month changed", month);
-            }}
+            onMonthChange={month => {}}
+            markedDates={calenderObj}
             hideArrows={false}
             hideExtraDays={false}
-            disableMonthChange={false}
+            // disableMonthChange={false}
             firstDay={1}
             hideDayNames={false}
             showWeekNumbers={false}
             onPressArrowLeft={substractMonth => substractMonth()}
             onPressArrowRight={addMonth => addMonth()}
+            theme={{
+              agendaKnobColor: "#BD10E0",
+              selectedDayBackgroundColor: "#BD10E0",
+              // dotColor: "#ffffff",
+              monthTextColor: "#BD10E0",
+              indicatorColor: "#BD10E0",
+              agendaDayTextColor: "#BD10E0",
+              agendaDayNumColor: "#BD10E0",
+              agendaTodayColor: "#BD10E0",
+              todayTextColor: "#BD10E0",
+              selectedDotColor: "#BD10E0",
+              arrowColor: "#BD10E0"
+            }}
           />
         </View>
         <View style={styles.container}>
@@ -285,17 +348,35 @@ export default class eventCalenderNew2 extends React.Component {
               }}
             >
               <View style={styles.reservations}>
-                <FlatList
-                  ref={c => (this.list = c)}
-                  data={this.state.dataSource}
-                  renderItem={this.renderRow.bind(this)}
-                  ListFooterComponent={this.renderFooter}
-                  onScroll={this.onScroll.bind(this)}
-                  keyExtractor={(item, index) => String(index)}
-                  refreshing={this.state.refreshing}
-                  onEndReached={this.handleLoadMore}
-                  onEndReachedThreshold={100}
-                />
+                {loading === false ? (
+                  <FlatList
+                    // ref={c => (this.list = c)}
+                    getItemLayout={this.getItemLayout}
+                    data={dataSource}
+                    renderItem={this.renderRow.bind(this)}
+                    ListFooterComponent={this.renderFooter}
+                    // onScroll={this.onScroll.bind(this)}
+                    ref={ref => {
+                      this.flatListRef = ref;
+                    }}
+                    keyExtractor={item => item}
+                    refreshing={this.state.refreshing}
+                    // onEndReached={this.handleLoadMore}
+                    initialScrollIndex={0}
+                    initialNumToRender={5}
+                    // onEndReachedThreshold={100}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      paddingVertical: 20,
+                      borderTopWidth: 1,
+                      borderColor: "white"
+                    }}
+                  >
+                    <ActivityIndicator animating size="large" color="#BD10E0" />
+                  </View>
+                )}
               </View>
             </View>
           </Content>
