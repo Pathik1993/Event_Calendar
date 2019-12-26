@@ -138,6 +138,7 @@ android {
 }
 
 dependencies {
+    implementation project(':react-native-localize')
     implementation project(':react-native-i18n')
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation "com.android.support:appcompat-v7:${rootProject.ext.supportLibVersion}"

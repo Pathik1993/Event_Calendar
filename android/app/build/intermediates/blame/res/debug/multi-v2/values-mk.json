@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "/media/ilesh/Pathik/React native Project/EventCalender/android/app/build/intermediates/incremental/mergeDebugResources/merged.dir/values-mk/values-mk.xml",
+            "outputFile": "/media/ilesh/Pathik/React native Project/Event_Calendar/android/app/build/intermediates/incremental/mergeDebugResources/merged.dir/values-mk/values-mk.xml",
             "map": [
                 {
                     "source": "/home/ilesh/.gradle/caches/transforms-2/files-2.1/80565f25a447b1146dfc0104347c19ca/res/values-mk/values-mk.xml",
